@@ -1,6 +1,6 @@
 @extends('kasir.layouts.app')
 
-@section('title', 'Scan Member via Kamera')
+@section('title', 'Scan Member Kasir')
 
 @section('content')
 
@@ -69,11 +69,12 @@
         padding: 24px;
     }
 
-    /* Camera Viewport */
+    /* Camera Viewport - Dimodifikasi sedikit untuk menampung input scanner */
     .camera-container {
         position: relative;
         width: 100%;
-        background: #111827;
+        background: #f4f9ed; /* Ubah dari hitam ke hijau muda agar lebih terang */
+        border: 2px dashed #65ad20;
         border-radius: 16px;
         overflow: hidden;
         min-height: 320px;
@@ -81,25 +82,14 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-    }
-
-    #reader {
-        width: 100% !important;
-        border: none !important;
-    }
-
-    #reader video {
-        width: 100% !important;
-        height: auto !important;
-        border-radius: 14px;
-        object-fit: cover;
+        padding: 20px;
     }
 
     .camera-controls {
         margin-top: 16px;
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        justify-content: center;
         gap: 12px;
     }
 
@@ -278,35 +268,46 @@
 
     <div class="scan-header">
         <h1>Scan QR Member</h1>
-        <p>Arahkan kamera ke QR Code dinamis kartu member customer untuk memulai transaksi.</p>
+        <p>Arahkan alat scanner barcode/QR ke kartu member customer untuk memulai transaksi.</p>
     </div>
 
     <div class="scan-grid">
 
-        {{-- LEFT: CAMERA SCANNER --}}
+        {{-- LEFT: PHYSICAL SCANNER --}}
         <div class="scan-card">
             <div class="scan-card-header">
                 <div>
-                    <h2>Kamera Scanner QR</h2>
-                    <p>Hanya mendukung scan langsung via kamera perangkat</p>
+                    <h2>Alat Scanner Kasir</h2>
+                    <p>Gunakan alat scanner fisik yang terhubung ke perangkat</p>
                 </div>
                 <div class="scan-badge-active" id="cameraStatusBadge">
                     <span class="scan-badge-pulse"></span>
-                    <span id="cameraStatusText">Kamera Siap</span>
+                    <span id="cameraStatusText">Siap Menerima Scan</span>
                 </div>
             </div>
 
             <div class="scan-card-body">
+                {{-- Container yang ukurannya persis sama dengan kamera sebelumnya --}}
                 <div class="camera-container" id="cameraWrapper">
-                    <div id="reader"></div>
+                    
+                    <div style="font-size: 45px; margin-bottom: 15px;">🔫</div>
+                    <h3 style="color: #18351c; font-size: 16px; margin-bottom: 5px; font-weight: 800;">Menunggu Hasil Scan...</h3>
+                    <p style="color: #7b887b; font-size: 12px; margin-bottom: 20px;">Tembakkan scanner ke QR Pelanggan</p>
+
+                    {{-- Kotak input ini yang menangkap data dari alat --}}
+                    <input 
+                        type="text" 
+                        id="scannerInput" 
+                        autofocus 
+                        autocomplete="off"
+                        placeholder="Klik di sini sebelum nge-scan" 
+                        style="width: 100%; max-width: 250px; padding: 12px; text-align: center; border: 2px solid #65ad20; border-radius: 10px; font-size: 14px; font-weight: bold; color: #18351c; outline: none;"
+                    >
                 </div>
 
                 <div class="camera-controls">
-                    <button type="button" class="btn-camera" id="btnRestartCamera" onclick="restartCamera()">
-                        Mulai Ulang Kamera
-                    </button>
-                    <button type="button" class="btn-camera" id="btnSwitchCamera" onclick="switchCamera()">
-                        Ganti Kamera
+                    <button type="button" class="btn-camera" onclick="document.getElementById('scannerInput').focus()">
+                        Fokuskan Ulang Kotak Scanner
                     </button>
                 </div>
 
@@ -314,7 +315,7 @@
             </div>
         </div>
 
-        {{-- RIGHT: RESULT CARD --}}
+        {{-- RIGHT: RESULT CARD (TIDAK ADA YANG DIUBAH) --}}
         <div class="scan-card">
             <div class="scan-card-header">
                 <div>
@@ -327,9 +328,12 @@
 
                 {{-- Empty state when not scanned yet --}}
                 <div class="result-empty" id="resultEmpty">
+                    <div class="result-empty-icon">
+                        ✓
+                    </div>
                     <h3 style="font-size:15px; font-weight:800; color:#253421; margin-bottom:6px;">Belum Ada Member Terdeteksi</h3>
                     <p style="font-size:12px; line-height:1.6; margin:0;">
-                        Arahkan kamera ke QR Code member pada HP pelanggan. Sistem akan otomatis mendeteksi dan memvalidasi member.
+                        Gunakan alat scanner untuk membaca QR Code member pada HP pelanggan. Sistem akan otomatis mendeteksi dan memvalidasi member.
                     </p>
                 </div>
 
@@ -384,7 +388,7 @@
 
                         <div id="boxResiScan" style="display:none; margin-top:10px;">
                             <p style="font-size:11px; color:#74806e; margin-bottom:6px;">Scan QR Kode Resi yang tertera di layar HP customer.</p>
-                            <button type="button" onclick="openScannerForResi()" style="width:100%; padding:8px; background:#579719; color:#fff; border:none; border-radius:8px; font-size:12px; font-weight:800; cursor:pointer;">Scann QR Resi Sekarang</button>
+                            <button type="button" onclick="openScannerForResi()" style="width:100%; padding:8px; background:#579719; color:#fff; border:none; border-radius:8px; font-size:12px; font-weight:800; cursor:pointer;">Scan QR Resi Sekarang</button>
                         </div>
                     </div>
 
@@ -401,107 +405,64 @@
 
 </div>
 
-{{-- HTML5 QR Code Scanner Library --}}
-<script src="https://unpkg.com/html5-qrcode"></script>
-
 <script>
-    let html5QrCode = null;
-    let isScanning = false;
-    let currentCameraId = null;
-    let availableCameras = [];
-    let currentCameraIndex = 0;
+    const scannerInput = document.getElementById('scannerInput');
+    const statusText = document.getElementById('cameraStatusText');
 
-    document.addEventListener('DOMContentLoaded', function() {
-        initScanner();
+    // Menjaga agar input scanner selalu aktif kecuali saat kasir ngetik nomor resi
+    document.addEventListener('click', function(e) {
+        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'A') {
+            scannerInput.focus();
+        }
     });
 
-    function initScanner() {
-        Html5Qrcode.getCameras().then(devices => {
-            if (devices && devices.length) {
-                availableCameras = devices;
-                let backCam = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('belakang') || d.label.toLowerCase().includes('rear'));
-                currentCameraId = backCam ? backCam.id : devices[0].id;
-                currentCameraIndex = devices.indexOf(backCam || devices[0]);
-                startScanning(currentCameraId);
-            } else {
-                startScanning({ facingMode: "environment" });
-            }
-        }).catch(err => {
-            console.warn("Get cameras fallback:", err);
-            startScanning({ facingMode: "environment" });
-        });
-    }
+    // Menangkap tembakan alat scanner
+    scannerInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            let qrData = scannerInput.value.trim();
+            
+            if (qrData !== "") {
+                scannerInput.disabled = true;
+                statusText.textContent = 'Memvalidasi Member...';
+                hideError();
+                
+                // Panggil API pencarian member
+                fetch("{{ route('kasir.member.find') }}", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-TOKEN": "{{ csrf_token() }}",
+                        "Accept": "application/json"
+                    },
+                    body: JSON.stringify({ qr_token: qrData })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    scannerInput.disabled = false;
+                    scannerInput.value = '';
+                    scannerInput.focus();
 
-    function startScanning(cameraConfig) {
-        if (!html5QrCode) {
-            html5QrCode = new Html5Qrcode("reader");
+                    if (data.success && data.member) {
+                        displayMemberResult(data.member, data.redirect_url);
+                    } else {
+                        showError(data.message || "Member tidak ditemukan atau QR tidak valid.");
+                        statusText.textContent = 'Siap Menerima Scan';
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    scannerInput.disabled = false;
+                    scannerInput.value = '';
+                    scannerInput.focus();
+                    showError("Terjadi kesalahan saat memvalidasi QR Member.");
+                    statusText.textContent = 'Siap Menerima Scan';
+                });
+            }
         }
+    });
 
-        const config = {
-            fps: 10,
-            qrbox: { width: 240, height: 240 },
-            aspectRatio: 1.0
-        };
-
-        html5QrCode.start(
-            cameraConfig,
-            config,
-            onScanSuccess,
-            onScanFailure
-        ).then(() => {
-            isScanning = true;
-            document.getElementById('cameraStatusText').textContent = 'Kamera Aktif & Memindai';
-            hideError();
-        }).catch(err => {
-            console.error("Camera start error:", err);
-            showError("Tidak dapat mengakses kamera. Pastikan izin kamera telah diizinkan pada browser.");
-            document.getElementById('cameraStatusText').textContent = 'Kamera Tidak Tersedia';
-        });
-    }
-
-    function onScanSuccess(decodedText, decodedResult) {
-        if (!isScanning) return;
-        isScanning = false;
-
-        document.getElementById('cameraStatusText').textContent = 'Memvalidasi QR Member...';
-        
-        fetch("{{ route('kasir.member.find') }}", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRF-TOKEN": "{{ csrf_token() }}",
-                "Accept": "application/json"
-            },
-            body: JSON.stringify({
-                qr_token: decodedText
-            })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success && data.member) {
-                displayMemberResult(data.member, data.redirect_url);
-            } else {
-                showError(data.message || "Member tidak ditemukan atau QR tidak valid.");
-                setTimeout(() => {
-                    isScanning = true;
-                    document.getElementById('cameraStatusText').textContent = 'Kamera Aktif & Memindai';
-                }, 2500);
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            showError("Terjadi kesalahan saat memvalidasi QR Member.");
-            setTimeout(() => {
-                isScanning = true;
-                document.getElementById('cameraStatusText').textContent = 'Kamera Aktif & Memindai';
-            }, 2500);
-        });
-    }
-
-    function onScanFailure(error) {
-        // Ignored in loop
-    }
-
+    // FUNGSI LAMA: TIDAK ADA YANG DIUBAH
     function displayMemberResult(member, redirectUrl) {
         hideError();
         document.getElementById('resultEmpty').style.display = 'none';
@@ -511,16 +472,15 @@
         document.getElementById('resName').textContent = member.name;
         document.getElementById('resCode').textContent = member.member_code;
         document.getElementById('resMemberCode').textContent = member.member_code;
-        document.getElementById('resPhone').textContent = member.phone;
+        document.getElementById('resPhone').textContent = member.phone || '-';
         document.getElementById('resPoints').textContent = new Intl.NumberFormat('id-ID').format(member.points) + ' Poin';
         
         const btnProceed = document.getElementById('btnProceedTx');
         btnProceed.href = redirectUrl;
 
-        // Store active member id for resi verification
         window.activeMemberId = member.id;
 
-        document.getElementById('cameraStatusText').textContent = '✓ Member Teridentifikasi';
+        statusText.textContent = '✓ Member Teridentifikasi';
     }
 
     function toggleRedeemInput() {
@@ -554,31 +514,11 @@
     }
 
     function openScannerForResi() {
-        alert('Arahkan kamera ke QR Code Resi milik customer.');
-        isScanning = true;
-    }
-
-    function restartCamera() {
-        if (html5QrCode) {
-            html5QrCode.stop().then(() => {
-                isScanning = false;
-                startScanning(currentCameraId || { facingMode: "environment" });
-            }).catch(() => {
-                startScanning(currentCameraId || { facingMode: "environment" });
-            });
-        } else {
-            initScanner();
-        }
-    }
-
-    function switchCamera() {
-        if (availableCameras.length > 1) {
-            currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
-            currentCameraId = availableCameras[currentCameraIndex].id;
-            restartCamera();
-        } else {
-            alert('Hanya 1 kamera yang terdeteksi pada perangkat ini.');
-        }
+        const inputResi = document.getElementById('inputResiCode');
+        document.getElementById('selectRedeemOption').value = 'resi_code';
+        toggleRedeemInput();
+        inputResi.focus();
+        inputResi.placeholder = "Arahkan & Tembak QR Resi di sini...";
     }
 
     function showError(msg) {

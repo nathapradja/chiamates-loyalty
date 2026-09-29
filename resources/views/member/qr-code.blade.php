@@ -942,53 +942,34 @@
 
     /*
     |--------------------------------------------------------------------------
-    | TIMER QR
+    | TIMER QR 
     |--------------------------------------------------------------------------
-    |
-    | Ini sementara untuk tampilan frontend.
-    | QR dinamis sebenarnya akan kita sambungkan
-    | ke backend pada tahap berikutnya.
-    |
     */
 
+    // Mencegat angka dari Laravel dan langsung memaksanya menjadi Integer murni (membuang desimal)
+    let rawSeconds = "{{ optional(auth()->user()->member)->qr_expires_at ? max(0, now()->diffInSeconds(optional(auth()->user()->member)->qr_expires_at, false)) : 300 }}";
+    let remainingSeconds = parseInt(rawSeconds, 10);
+    
+    // Jaga-jaga kalau hasilnya NaN
+    if (isNaN(remainingSeconds)) {
+        remainingSeconds = 0;
+    }
 
-    let remainingSeconds = {{ optional(auth()->user()->member)->qr_expires_at ? max(0, now()->diffInSeconds(optional(auth()->user()->member)->qr_expires_at, false)) : 300 }};
-
-
-    const timerElement =
-        document.getElementById('timer');
-
-
-    const refreshButton =
-        document.getElementById('refreshQr');
-
+    const timerElement = document.getElementById('timer');
+    const refreshButton = document.getElementById('refreshQr');
 
     function updateTimer() {
+        
+        // Karena remainingSeconds sudah PASTI integer murni, pembagiannya aman
+        const minutes = Math.floor(remainingSeconds / 60);
+        const seconds = Math.floor(remainingSeconds % 60);
 
-        const minutes =
-            Math.floor(
-                remainingSeconds / 60
-            );
-
-
-        const seconds =
-            remainingSeconds % 60;
-
-
-        timerElement.textContent =
-            String(minutes).padStart(2, '0')
-            + ':'
-            + String(seconds).padStart(2, '0');
-
+        timerElement.textContent = String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
 
         if (remainingSeconds > 0) {
-
             remainingSeconds--;
-
         } else {
-
-            timerElement.textContent =
-                '00:00';
+            timerElement.textContent = '00:00';
 
             const qrBox = document.querySelector('.qr-box');
             if (qrBox && !document.getElementById('qr-expired-overlay')) {
@@ -1010,7 +991,6 @@
                 overlay.innerHTML = 'QR KADALUARSA<br><span style="font-size:10px; color:#747C6E;">Silakan Perbarui</span>';
                 overlay.style.textAlign = 'center';
                 
-                // Tambahkan filter blur hanya pada gambar SVG di dalam qrBox agar tidak mengaburkan overlay teks!
                 const svg = qrBox.querySelector('svg');
                 if (svg) {
                     svg.style.filter = 'blur(4px)';
@@ -1018,45 +998,35 @@
                 
                 qrBox.appendChild(overlay);
             }
-
         }
-
     }
 
 
-    setInterval(
-        updateTimer,
-        1000
-    );
+    setInterval(updateTimer, 1000);
 
 
-    refreshButton.addEventListener(
-        'click',
-        function () {
+    refreshButton.addEventListener('click', function () {
+        refreshButton.disabled = true;
+        refreshButton.textContent = 'Memperbarui...';
 
-            refreshButton.disabled = true;
-            refreshButton.textContent = 'Memperbarui...';
-
-            fetch('{{ route('member.generate.qr') }}', {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                }
-            })
-            .then(res => res.json())
-            .then(data => {
-                 window.location.reload();
-            })
-            .catch(err => {
-                refreshButton.disabled = false;
-                refreshButton.textContent = 'Perbarui QR';
-                alert('Gagal memperbarui QR Code.');
-            });
-
-        }
-    );
+        fetch('{{ route('member.generate.qr') }}', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+             window.location.reload();
+        })
+        .catch(err => {
+            refreshButton.disabled = false;
+            refreshButton.textContent = 'Perbarui QR';
+            alert('Gagal memperbarui QR Code.');
+        });
+    });
 
 
     updateTimer();
